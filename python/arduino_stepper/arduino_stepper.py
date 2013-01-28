@@ -24,7 +24,10 @@ class Arduino_Data_Transmission(serial.Serial):
                 
                 return interrupt_0, interrupt_1
                 
-    
+    def set_software_transmission(self, bool_val):
+        self.write('[%s,%s]\n'%(100,bool_val))
+                
+                
 def example_drive_stepper_to_bounce_between_two_limit_switches():
     arduino_data_transmission = Arduino_Data_Transmission(port='/dev/ttyACM0',timeout=1, baudrate=19200)
     

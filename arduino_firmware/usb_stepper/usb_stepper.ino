@@ -20,6 +20,7 @@ long absspd;
 bool interrupt_0 = 0;
 bool interrupt_1 = 0;
 bool interrupt_override = 0;
+bool software_transmission = 0;
 long action;
 long value;
 long interrupt_override_timer = 0;
@@ -72,7 +73,6 @@ void loop()
         action = receiver.readLong(0);
         value = receiver.readLong(1);
         receiver.reset();
-        //Serial << interrupt_0 << ", " << interrupt_1 << ", " << (((interrupt_0==1) || (interrupt_1==1)) && interrupt_override==0) << "," << action << "," << value << endl;
     }
   }
         
@@ -98,20 +98,31 @@ void loop()
       digitalWrite(dir_pin,LOW);
     }
     
-    // software transmission to allow for wider speed range with smooth transition
+    
+    // Note on using PWM for clock control: small numbers correspond to higher speeds. 
+    // The PWM has a range of 256, so to make speed control more intuitive we subtract 256, and cap the max speed.
+    
+    // software transmission to allow for wider speed range with smooth transition. note this messes with the internal clock, by default it is off.
     absspd = abs(spd); // absolute value of speed
-    if (absspd <= 250) {
-      setPwmFrequency(clock_pin, 1024);
-      int newVal = -1*(absspd-256);
-      if (newVal < 4) newVal = 4;
-      OCR2A = newVal;
+    if (software_transmission == 1) {
+      if (absspd <= 250) {
+        setPwmFrequency(clock_pin, 1024);
+        int newVal = -1*(absspd-256);
+        if (newVal < 4) newVal = 4;
+        OCR2A = newVal;
+      }
+      if (absspd > 250) {
+        setPwmFrequency(clock_pin, 64);
+        int newVal = -1*(absspd-256-256)-192+25;
+        if (newVal < 20) newVal = 20;
+        OCR2A = newVal;
+      }
+    } else {
+        int newVal = -1*(absspd-256);
+        if (newVal < 4) newVal = 4;
+        OCR2A = newVal;
     }
-    if (absspd > 250) {
-      setPwmFrequency(clock_pin, 64);
-      int newVal = -1*(absspd-256-256)-192+25;
-      if (newVal < 20) newVal = 20;
-      OCR2A = newVal;
-    }
+    
     
   }
 
@@ -126,6 +137,11 @@ void loop()
   if (action==3) {
     delay(1);
     Serial << interrupt_0 << "," << interrupt_1 << endl;
+  }
+  
+  // set software transmission
+  if (action==100) {
+    software_transmission = value;
   }
     
   
