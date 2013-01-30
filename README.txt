@@ -1,12 +1,15 @@
 Version 0.0.1
 
-The arduino firmware was written for and tested with an arduino UNO. 
+The arduino firmware was written for and tested with an arduino UNO. It will probably only work what an UNO without a fair bit of work.
 
-Things to be aware of:
+Usage:
 
-1. With software_transmission disabled (default) the speed is set with 8 bits, between 0 and 256. The actual speed of the motor depends on two things: (1) the setting on the motor; (2) the clock speed of the chip. The software_transmission enabled (via set_software_transmission(1)), the speed range is between 0 and 512. This could be expanded yet further. Note that this can affect functions that rely on millis().
+1. upload the firmware (usb_stepper.ino) to your arduino uno using the arduino IDE.
+2. install the python api: from within arduino_stepper/python run:
+        python setup.py install
+3. import arduino_stepper.arduino_stepper to get access to the class that serves as the python API
 
-Things that should be added asap: 
+Examples:
 
-1. Currently there is no proper calibration between speed and steps per second
-2. Step counting is not currently implemented
+see the folder python/examples.
+
