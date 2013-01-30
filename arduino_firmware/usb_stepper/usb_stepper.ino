@@ -11,26 +11,31 @@ SerialReceiver receiver;
 
 // for UNO: 3, 5, 6, 9, 10, and 11. (the pins with the ~ next to them) 
 // Provide 8-bit PWM output with the analogWrite() function
-int clock_pin= 3;
+int clock_pin = 3;
+int clock_interrupt = 1; // for Uno this interrupt corresponds to pin 3, and allows us to keep track of position
 int dir_pin = 8;
 
-// Variables used for decoding and delimiting TCP msg
+// Variables, yes some of these could be ints instead of longs.
 long spd;
 long absspd;
 bool interrupt_0 = 0;
 bool interrupt_1 = 0;
-bool interrupt_override = 0;
+bool interrupt_override = 1;
 bool software_transmission = 0;
+long interrupt_override_stepcounter = 0;
+long interrupt_override_steptrigger = 0;
+long dir = 0;
 long action;
 long value;
-long interrupt_override_timer = 0;
-long interrupt_override_timeout = 0;
-
+int value_as_int;
+long pulse_counter = 0;
+long interrupt_pin_0 = 0;
+long interrupt_pin_1 = 1;
 
 void setup()
 {
   // start the serial for debugging
-  Serial.begin(19200);
+  Serial.begin(57600);
   
   // set direction pins to output, and initialize stepper motors to zero
   delay(1000);
@@ -41,32 +46,18 @@ void setup()
   TCCR2B = _BV(WGM22) | _BV(CS22);
   OCR2A = 256;
   OCR2B = 1;
-  setPwmFrequency(3, 1024);
+  setPwmFrequency(3, 64);
   
   spd = 0;
+  
+  // for UNO this allows pulse (step) counting on pin 3
+  attachInterrupt(clock_interrupt, interrupt_handler, RISING);
 
 }
 
 void loop()
-{
-  if (analogRead(0)<100) {
-    interrupt_0 = 1;
-  } else {
-    interrupt_0 = 0;
-  }
-  
-  if (analogRead(1)<100) {
-    interrupt_1 = 1;
-  } else {
-    interrupt_1 = 0;
-  }
-  
-  if (interrupt_override==1) {
-    if ((millis()-interrupt_override_timer) > interrupt_override_timeout) {
-      interrupt_override = 0;
-    }
-  }
-  
+{  
+  // read serial message, if available
   while (Serial.available() > 0) {
     receiver.process(Serial.read());
     if (receiver.messageReady()) {
@@ -75,10 +66,30 @@ void loop()
         receiver.reset();
     }
   }
-        
   
+  // read analog pins 0 and 1 to test for interrupt status
+  if (interrupt_override==0) {
+    if (analogRead(interrupt_pin_0)<100) {
+      interrupt_0 = 1;
+    } else {
+      interrupt_0 = 0;
+    }
     
-  // set speed (if not interrupted)
+    if (analogRead(interrupt_pin_1)<100) {
+      interrupt_1 = 1;
+    } else {
+      interrupt_1 = 0;
+    }
+  }
+  
+  // check for interrupt timeout
+  if ((interrupt_override==1) && (interrupt_override_steptrigger>0)) {
+    if (abs(pulse_counter-interrupt_override_stepcounter) > interrupt_override_steptrigger) {
+      interrupt_override = 0;
+    }
+  }
+
+  // set speed (if not interrupted, or if interrupted set speed to 0)
   if ((action==1) || ((interrupt_0==1) || (interrupt_1==1)) ) {
     //Serial << value << ", " << interrupt_0 << ", " << interrupt_1 << ", " << interrupt_override << endl;
     if ( ((interrupt_0==0) && (interrupt_1==0)) || interrupt_override==1) {
@@ -93,66 +104,65 @@ void loop()
     // set direction
     if (spd > 0) {
       digitalWrite(dir_pin,HIGH);
+      dir = 1;
     }
     if (spd < 0) {
       digitalWrite(dir_pin,LOW);
+      dir = -1;
     }
     
-    
-    // Note on using PWM for clock control: small numbers correspond to higher speeds. 
-    // The PWM has a range of 256, so to make speed control more intuitive we subtract 256, and cap the max speed.
-    
-    // software transmission to allow for wider speed range with smooth transition. note this messes with the internal clock, by default it is off.
+    // see python api for the heavy lifting
     absspd = abs(spd); // absolute value of speed
-    if (software_transmission == 1) {
-      if (absspd <= 250) {
-        setPwmFrequency(clock_pin, 1024);
-        int newVal = -1*(absspd-256);
-        if (newVal < 4) newVal = 4;
-        OCR2A = newVal;
-      }
-      if (absspd > 250) {
-        setPwmFrequency(clock_pin, 64);
-        int newVal = -1*(absspd-256-256)-192+25;
-        if (newVal < 20) newVal = 20;
-        OCR2A = newVal;
-      }
-    } else {
-        int newVal = -1*(absspd-256);
-        if (newVal < 4) newVal = 4;
-        OCR2A = newVal;
-    }
-    
-    
+    int newVal = -1*(absspd-256);
+    if (newVal < 4) newVal = 4;
+    OCR2A = newVal;
+     
   }
 
-  // interrupt_override
+  // enable interrupt_override
   if (action==2) {
     interrupt_override = 1;
-    interrupt_override_timeout = value;
-    interrupt_override_timer = millis();
+    interrupt_override_steptrigger = value;
+    interrupt_override_stepcounter = pulse_counter;
   }
   
   // get interrupt state
   if (action==3) {
-    delay(1);
     Serial << interrupt_0 << "," << interrupt_1 << endl;
   }
   
-  // set software transmission
-  if (action==100) {
-    software_transmission = value;
+  // disable interrupt override
+  if (action==4) {
+    interrupt_override = 0;
+  }
+  
+  // get position
+  if (action==5) {
+    Serial << pulse_counter << endl;
+  }
+  
+  // reset step counter
+  if (action==8) {
+    pulse_counter = 0;
+  }
+  
+  // set interrupt pins
+  if (action==6) {
+    interrupt_pin_0 = value;
+  }
+  if (action==7) {
+    interrupt_pin_1 = value;
+  }
+  
+  // set speed range
+  if (action==101) {
+    value_as_int = (int) value;
+    setPwmFrequency(clock_pin, value_as_int);
   }
     
-  
+  // reset action
   action = 0;
-        
-    
-  
-  delay(1);
-  
-    
-    
+
 }
 
 
@@ -214,7 +224,7 @@ void setPwmFrequency(int pin, int divisor) {
       case 64: mode = 0x04; break;
       case 128: mode = 0x05; break;
       case 256: mode = 0x06; break;
-      case 1024: mode = 0x7; break;
+      case 1024: mode = 0x07; break;
       default: return;
     }
     TCCR2B = TCCR2B & 0b11111000 | mode;
@@ -222,3 +232,8 @@ void setPwmFrequency(int pin, int divisor) {
 }
    
           
+          
+void interrupt_handler() {
+  pulse_counter = pulse_counter + dir;
+}
+  
