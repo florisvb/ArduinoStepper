@@ -149,4 +149,4 @@ class Arduino_Stepper(serial.Serial):
 ##############################################################################################
             
 if __name__ == '__main__':
-    astep = Arduino_Stepper(port='/dev/ttyACM0',timeout=1, baudrate=19200)
+    astep = Arduino_Stepper(port='/dev/ttyACM0',timeout=1, baudrate=57600)
