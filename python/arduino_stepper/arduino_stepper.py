@@ -17,6 +17,8 @@ class Arduino_Stepper(serial.Serial):
         self.frequency = 0
         self.position = 0
         
+        self.mode = 'velocity'
+        
     def _set_pwm_speed(self, pwm_speed):
         self.write('[%s,%s]\n'%(1,pwm_speed))
         self.pwm_speed = pwm_speed
@@ -26,13 +28,19 @@ class Arduino_Stepper(serial.Serial):
         if self.pwm_frequency_divisor != val:
             self.write('[%s,%s]\n'%(101,val))
             self.pwm_frequency_divisor = val
-        
+            
+    def _set_velocity_mode(self):
+        if self.mode != 'velocity':
+            self.write('[%s,%s]\n'%(102,0))
+            self.mode = 'velocity'
+            
     def set_vel(self, frequency):
         '''
         Sets frequency to as close as possible to the desired frequency, using frequency divisors and pwm_speeds. Only updates arduino if the values are different than those that were commanded last time.
         
         frequency -- steps per second
         '''
+        self._set_velocity_mode()
         
         if frequency == 0:
             self._set_pwm_speed(0)
@@ -45,7 +53,7 @@ class Arduino_Stepper(serial.Serial):
             pwm_speed = 0
             divisor = self.pwm_frequency_divisor
             
-        if pwm_speed != self.pwm_speed or divisor != self.pwm_frequency_divisor:
+        if self.frequency != frequency:
             self._set_pwm_speed(pwm_speed*np.sign(frequency))
         if divisor != self.pwm_frequency_divisor:
             self._set_pwm_frequency_divisor(divisor)
@@ -68,18 +76,16 @@ class Arduino_Stepper(serial.Serial):
         self.write('[%s,%s]\n'%(3,0))
         while 1:
             data = self.readline().strip()
-            if data is not None:
+            if data is not None and len(data) > 0:
                 interrupt_0, interrupt_1 = data.split(',')
                 interrupt_0 = int(interrupt_0)
                 interrupt_1 = int(interrupt_1)
                 
                 return interrupt_0, interrupt_1
         
-    def get_pos(self):
-        self.flush()
+    def get_pos(self, timeout=10000):
         self.write('[%s,%s]\n'%(5,0))
         tstart = time.time()
-        timeout = 1
         while time.time() - tstart < timeout:
             data = self.readline().strip()
             if data is not None and len(data) > 0:
@@ -156,32 +162,47 @@ class Arduino_Stepper(serial.Serial):
         pwm_speed = self._get_pwm_speed_for_frequency_and_divisor(f, divisor)
         return int(pwm_speed), divisor
         
-    def increment_steps(self, nsteps, period=None):
+    def increment_steps(self, nsteps, period=None, wait_until_done=False):
         '''
         Simple function to increment n steps, in either direction. Period sets the period of the increments, in microseconds.
         
-        This is a blocking function on the arduino, meaning it will be looping until it gets to the desired position and will not recieve serial communications in the mean time. It does not, however, block in python.
+        This is a blocking function on the arduino, meaning it will be looping until it gets to the desired position and will not recieve serial communications in the mean time. You can decide whether or not the python function is blocking using the wait_until_done flag.
         '''
+        self.mode = 'position'
+        
         self._set_pwm_frequency_divisor(64) # that's the default, this way the timer will work as expected
         if period is not None:
             self._set_increment_steps_period(period)
-        self.write('[%s,%s]\n'%(10,nsteps))
+            
+        if not wait_until_done:
+            self.write('[%s,%s]\n'%(10,nsteps))
+            return self.get_pos()
+        else:
+            self.write('[%s,%s]\n'%(12,nsteps))
+            while 1:
+                data = self.readline().strip()
+                if data is not None and len(data) > 0:
+                    if int(data) == 1:
+                        return self.get_pos()
+                
         
     def _set_increment_steps_period(self, val):
         self.write('[%s,%s]\n'%(11,int(val/2.)))
         
-    def go_to_pos(self, pos, frequency):
+    def go_to_pos(self, pos, frequency, wait_until_done=True):
         '''
         Uses self.increment_steps to move the stepper to the desired position at the desired frequency (units: seconds). 
         
-        This is a blocking function on the arduino, but not in python.
+        This is a blocking function on the arduino, but not in python. If you want to block until done, set wait_until_done to True.
         '''
         current_pos = self.get_pos()
         increment = pos - current_pos
         period = int( (1/float(frequency))*1e6 )
-        self.increment_steps(increment, period)
-        return pos
-    
+        pos = self.increment_steps(increment, period, wait_until_done)
+        
+        
+        
+        
 ##############################################################################################
             
 if __name__ == '__main__':

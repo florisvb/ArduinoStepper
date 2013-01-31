@@ -43,13 +43,7 @@ void setup()
   pinMode(clock_pin,OUTPUT);
   pinMode(dir_pin,OUTPUT);
 
-  TCCR2A = _BV(COM2A0) | _BV(COM2B1) | _BV(WGM20);
-  TCCR2B = _BV(WGM22) | _BV(CS22);
-  OCR2A = 256;
-  OCR2B = 1;
-  setPwmFrequency(3, 64);
-  
-  spd = 0;
+  set_velocity_mode();
   
   // for UNO this allows pulse (step) counting on pin 3
   attachInterrupt(clock_interrupt, interrupt_handler, RISING);
@@ -69,7 +63,7 @@ void loop()
   }
   
   // read analog pins 0 and 1 to test for interrupt status
-  if (interrupt_override==0) {
+  if (1) {
     if (analogRead(interrupt_pin_0)<100) {
       interrupt_0 = 1;
     } else {
@@ -161,6 +155,11 @@ void loop()
     setPwmFrequency(clock_pin, value_as_int);
   }
   
+  // set velocity mode
+  if (action==102) {
+    set_velocity_mode();
+  }
+  
   // increment steps
   if (action==10) {
     if (value<0) {
@@ -172,6 +171,20 @@ void loop()
     for (int i=0; i<abs(value); i++) {
       incrementStep(dir);
     }
+  }
+  
+    // increment steps
+  if (action==12) {
+    if (value<0) {
+      dir = -1;
+    }
+    if (value>0) {
+      dir = 1;
+    }
+    for (int i=0; i<abs(value); i++) {
+      incrementStep(dir);
+    }
+    Serial << 1 << endl;
   }
   
   // set increment steps period
@@ -196,6 +209,7 @@ void incrementStep(int dir) {
   digitalWrite(clock_pin, HIGH);
   delayMicroseconds(increment_steps_delay);
   digitalWrite(clock_pin, LOW);
+  delayMicroseconds(increment_steps_delay);
 }
   
    
@@ -262,7 +276,15 @@ void setPwmFrequency(int pin, int divisor) {
   }
 }
    
-          
+void set_velocity_mode() {
+  TCCR2A = _BV(COM2A0) | _BV(COM2B1) | _BV(WGM20);
+  TCCR2B = _BV(WGM22) | _BV(CS22);
+  OCR2A = 256;
+  OCR2B = 1;
+  setPwmFrequency(clock_pin, 64);
+  spd = 0;
+}  
+
           
 void interrupt_handler() {
   pulse_counter = pulse_counter + dir;
