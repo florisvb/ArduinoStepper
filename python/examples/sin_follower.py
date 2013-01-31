@@ -40,7 +40,7 @@ def sin_curve_in_position_with_vel_control(amplitude, frequency, time_to_wiggle_
     ax.set_ylabel('value')
     
     
-def sin_curve_in_position_with_pos_control(amplitude, frequency, time_to_wiggle_for=5, maxvel=1000, port='/dev/ttyACM0', baudrate=57600, timeout=1):
+def sin_curve_in_position_with_pos_control(amplitude, frequency, time_to_wiggle_for=5, maxvel=5000, port='/dev/ttyACM0', baudrate=57600, timeout=1):
     '''
     
     '''
@@ -79,5 +79,5 @@ def sin_curve_in_position_with_pos_control(amplitude, frequency, time_to_wiggle_
     
 if __name__ == '__main__':
     amplitude = 1000 # in steps
-    frequency = 0.1 # in steps per second
-    sin_curve_in_position_with_pos_control(amplitude, frequency, time_to_wiggle_for=10, port='/dev/ttyACM0', baudrate=57600, timeout=1)
+    frequency = .5 # in steps per second
+    sin_curve_in_position_with_pos_control(amplitude, frequency, time_to_wiggle_for=10, port='/dev/ttyACM1', baudrate=57600, timeout=1)
