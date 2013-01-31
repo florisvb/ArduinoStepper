@@ -3,9 +3,9 @@ import time
 import numpy as np
 import arduino_stepper.arduino_stepper as arduino_stepper
 
-def sin_curve_in_position_with_vel_control(amplitude, frequency, time_to_wiggle_for=5, maxvel=5000, acceptable_error=2, gain_proportional=10, gain_integral=1, port='/dev/ttyACM0', baudrate=57600, timeout=1):
+def sin_curve_in_position_with_vel_control(amplitude, frequency, time_to_wiggle_for=5, maxvel=5000, acceptable_error=2, gain_proportional=1, gain_integral=.001, port='/dev/ttyACM0', baudrate=57600, timeout=1):
     '''
-    
+    This does not reall work well.
     '''
     def sinfunc(t):
         return amplitude*np.sin( t*2*np.pi*frequency )
@@ -26,7 +26,7 @@ def sin_curve_in_position_with_vel_control(amplitude, frequency, time_to_wiggle_
         desired_position = sinfunc(t)
         desired_position_array.append(desired_position)
         desired_position_time.append(t)
-        pos = astep.go_to_pos(desired_position, maxvel=5000, acceptable_error=2, gain_proportional=10, gain_integral=1)
+        pos = astep.go_to_pos_vel_control(desired_position, maxvel=5000, acceptable_error=2, gain_proportional=10, gain_integral=1)
         actual_position_array.append(pos)
         actual_position_time.append(time.time()-time_start)
         
@@ -79,5 +79,5 @@ def sin_curve_in_position_with_pos_control(amplitude, frequency, time_to_wiggle_
     
 if __name__ == '__main__':
     amplitude = 1000 # in steps
-    frequency = .5 # in steps per second
-    sin_curve_in_position_with_pos_control(amplitude, frequency, time_to_wiggle_for=10, port='/dev/ttyACM1', baudrate=57600, timeout=1)
+    frequency = 1 # in steps per second
+    sin_curve_in_position_with_vel_control(amplitude, frequency, time_to_wiggle_for=10, port='/dev/ttyACM1', baudrate=57600, timeout=1)
