@@ -31,6 +31,7 @@ int value_as_int;
 long pulse_counter = 0;
 long interrupt_pin_0 = 0;
 long interrupt_pin_1 = 1;
+long increment_steps_delay = 5;
 
 void setup()
 {
@@ -159,6 +160,24 @@ void loop()
     value_as_int = (int) value;
     setPwmFrequency(clock_pin, value_as_int);
   }
+  
+  // increment steps
+  if (action==10) {
+    if (value<0) {
+      dir = -1;
+    }
+    if (value>0) {
+      dir = 1;
+    }
+    for (int i=0; i<abs(value); i++) {
+      incrementStep(dir);
+    }
+  }
+  
+  // set increment steps period
+  if (action==11) {
+    increment_steps_delay = value; 
+  }
     
   // reset action
   action = 0;
@@ -166,7 +185,19 @@ void loop()
 }
 
 
-
+void incrementStep(int dir) {
+  if (dir==1) {
+    digitalWrite(dir_pin,HIGH);
+  }
+  if (dir==-1) {
+    digitalWrite(dir_pin,LOW);
+  }
+  
+  digitalWrite(clock_pin, HIGH);
+  delayMicroseconds(increment_steps_delay);
+  digitalWrite(clock_pin, LOW);
+}
+  
    
 /**
  * Divides a given PWM pin frequency by a divisor.

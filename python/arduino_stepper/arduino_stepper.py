@@ -23,8 +23,9 @@ class Arduino_Stepper(serial.Serial):
     
     def _set_pwm_frequency_divisor(self, val):
         # val: 1, 8, 32, 64, 128, 256, 1024
-        self.write('[%s,%s]\n'%(101,val))
-        self.pwm_frequency_divisor = val
+        if self.pwm_frequency_divisor != val:
+            self.write('[%s,%s]\n'%(101,val))
+            self.pwm_frequency_divisor = val
         
     def set_vel(self, frequency):
         '''
@@ -89,19 +90,28 @@ class Arduino_Stepper(serial.Serial):
             self.position = 0
             return 0
             
-    def go_to_pos(self, desired_position, maxvel=500, acceptable_error=2, gain_proportional=1, gain_integral=1):
+    def go_to_pos_vel_control(self, desired_position, maxvel=500, acceptable_error=1, gain_proportional=1, gain_integral=0.001, integral_memory=20):
+        '''
+        Uses a PI controller to drive the stepper motor to a desired position within an acceptable error and a maximum velocity.
+        
+        Returns the final position.
+        
+        This is a blocking function in python, but not on the arduino. 
+        '''
         error = desired_position - self.get_pos()
         error_history = []
         current_position = self.get_pos()
-        while np.abs(error)>acceptable_error:
+        dt = 0.001
+        while np.abs(error)>=acceptable_error:
+            time_loop_start = time.time()
             current_position = self.get_pos()
             error = desired_position - self.get_pos()
             error_history.append(error)
             
-            if len(error_history)>20:
+            if len(error_history)>integral_memory:
                 error_history.pop(0)
             
-            integrated_error = np.sum(error_history)
+            integrated_error = np.sum(error_history)/dt
             vel = error*gain_proportional + integrated_error*gain_integral
             
             if vel>maxvel:
@@ -110,7 +120,7 @@ class Arduino_Stepper(serial.Serial):
                 vel = -1*maxvel
             self.set_vel(vel)
             
-            print desired_position, current_position, vel
+            dt = time.time() - time_loop_start
             
         self.set_vel(0)
         return current_position
@@ -145,6 +155,32 @@ class Arduino_Stepper(serial.Serial):
         divisor = self._get_divisor_for_frequency(f)
         pwm_speed = self._get_pwm_speed_for_frequency_and_divisor(f, divisor)
         return int(pwm_speed), divisor
+        
+    def increment_steps(self, nsteps, period=None):
+        '''
+        Simple function to increment n steps, in either direction. Period sets the period of the increments, in microseconds.
+        
+        This is a blocking function on the arduino, meaning it will be looping until it gets to the desired position and will not recieve serial communications in the mean time. It does not, however, block in python.
+        '''
+        self._set_pwm_frequency_divisor(64) # that's the default, this way the timer will work as expected
+        if period is not None:
+            self._set_increment_steps_period(period)
+        self.write('[%s,%s]\n'%(10,nsteps))
+        
+    def _set_increment_steps_period(self, val):
+        self.write('[%s,%s]\n'%(11,int(val/2.)))
+        
+    def go_to_pos(self, pos, frequency):
+        '''
+        Uses self.increment_steps to move the stepper to the desired position at the desired frequency (units: seconds). 
+        
+        This is a blocking function on the arduino, but not in python.
+        '''
+        current_pos = self.get_pos()
+        increment = pos - current_pos
+        period = int( (1/float(frequency))*1e6 )
+        self.increment_steps(increment, period)
+        return pos
     
 ##############################################################################################
             
