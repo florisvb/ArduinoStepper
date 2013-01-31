@@ -200,7 +200,7 @@ class Arduino_Stepper(serial.Serial):
         period = int( (1/float(frequency))*1e6 )
         pos = self.increment_steps(increment, period, wait_until_done)
         
-        
+        return pos
         
         
 ##############################################################################################
