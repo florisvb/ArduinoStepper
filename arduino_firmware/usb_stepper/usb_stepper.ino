@@ -36,7 +36,7 @@ long increment_steps_delay = 5;
 void setup()
 {
   // start the serial for debugging
-  Serial.begin(57600);
+  Serial.begin(19200);
   
   // set direction pins to output, and initialize stepper motors to zero
   delay(1000);
@@ -62,20 +62,7 @@ void loop()
     }
   }
   
-  // read analog pins 0 and 1 to test for interrupt status
-  if (1) {
-    if (analogRead(interrupt_pin_0)<100) {
-      interrupt_0 = 1;
-    } else {
-      interrupt_0 = 0;
-    }
-    
-    if (analogRead(interrupt_pin_1)<100) {
-      interrupt_1 = 1;
-    } else {
-      interrupt_1 = 0;
-    }
-  }
+  check_interrupt_pins();
   
   // check for interrupt timeout
   if ((interrupt_override==1) && (interrupt_override_steptrigger>0)) {
@@ -106,6 +93,7 @@ void loop()
       dir = -1;
     }
     
+    // set speed
     // see python api for the heavy lifting
     absspd = abs(spd); // absolute value of speed
     int newVal = -1*(absspd-256);
@@ -160,8 +148,14 @@ void loop()
     set_velocity_mode();
   }
   
+  // get interrupt override state
+  if (action==1000) {
+    Serial << interrupt_override << endl;
+  }
+  
   // increment steps
   if (action==10) {
+    
     if (value<0) {
       dir = -1;
     }
@@ -169,12 +163,20 @@ void loop()
       dir = 1;
     }
     for (int i=0; i<abs(value); i++) {
+      // check interrupt pins
+      if (interrupt_override==0) {
+        check_interrupt_pins();
+        if ((interrupt_0==1) || (interrupt_1==1)) {
+          break;
+        }
+      }
       incrementStep(dir);
     }
   }
   
     // increment steps
   if (action==12) {
+    
     if (value<0) {
       dir = -1;
     }
@@ -182,9 +184,19 @@ void loop()
       dir = 1;
     }
     for (int i=0; i<abs(value); i++) {
+      // check interrupt pins
+      if (interrupt_override==0) {
+        check_interrupt_pins();
+        if ((interrupt_0==1) || (interrupt_1==1)) {
+          Serial << pulse_counter << endl;
+          break;
+        }
+      }
       incrementStep(dir);
     }
-    Serial << 1 << endl;
+    if ((interrupt_0==0) && (interrupt_1==0)) {
+      Serial << pulse_counter << endl;
+    }
   }
   
   // set increment steps period
@@ -194,7 +206,7 @@ void loop()
     
   // reset action
   action = 0;
-
+  delay(0);
 }
 
 
@@ -290,3 +302,20 @@ void interrupt_handler() {
   pulse_counter = pulse_counter + dir;
 }
   
+  
+void check_interrupt_pins() {
+  // read analog pins 0 and 1 to test for interrupt status
+  if (1) {
+    if (analogRead(interrupt_pin_0)<100) {
+      interrupt_0 = 1;
+    } else {
+      interrupt_0 = 0;
+    }
+    
+    if (analogRead(interrupt_pin_1)<100) {
+      interrupt_1 = 1;
+    } else {
+      interrupt_1 = 0;
+    }
+  }
+}
