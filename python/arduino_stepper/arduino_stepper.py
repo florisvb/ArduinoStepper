@@ -6,6 +6,7 @@ class Arduino_Stepper(serial.Serial):
     def __init__ (self, arduino_board='uno', clock_pin=3, **kwargs):
         super(Arduino_Stepper,self).__init__(**kwargs)
         time.sleep(2)
+        #self.readlines() # clear out buffer
         
         if arduino_board=='uno' and clock_pin==3:
             self.divisors = {1: 31250, 8: 3906.25, 32: 976.5625, 64: 488.28125, 128: 244.140625, 256: 122.0703125, 1024: 30.517578125}
@@ -53,10 +54,8 @@ class Arduino_Stepper(serial.Serial):
             pwm_speed = 0
             divisor = self.pwm_frequency_divisor
             
-        if self.frequency != frequency:
-            self._set_pwm_speed(pwm_speed*np.sign(frequency))
-        if divisor != self.pwm_frequency_divisor:
-            self._set_pwm_frequency_divisor(divisor)
+        self._set_pwm_speed(pwm_speed*np.sign(frequency))
+        self._set_pwm_frequency_divisor(divisor)
             
         self.frequency = frequency
         
@@ -182,8 +181,7 @@ class Arduino_Stepper(serial.Serial):
             while 1:
                 data = self.readline().strip()
                 if data is not None and len(data) > 0:
-                    if int(data) == 1:
-                        return self.get_pos()
+                    return int(data)
                 
         
     def _set_increment_steps_period(self, val):
@@ -206,4 +204,4 @@ class Arduino_Stepper(serial.Serial):
 ##############################################################################################
             
 if __name__ == '__main__':
-    astep = Arduino_Stepper(port='/dev/ttyACM0',timeout=1, baudrate=57600)
+    astep = Arduino_Stepper(port='/dev/ttyACM0',timeout=1, baudrate=19200)
