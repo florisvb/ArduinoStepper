@@ -3,7 +3,7 @@ import time
 import numpy as np
 import arduino_stepper.arduino_stepper as arduino_stepper
 
-def sin_curve_in_position_with_vel_control(amplitude, frequency, time_to_wiggle_for=5, maxvel=5000, acceptable_error=2, gain_proportional=1, gain_integral=.001, port='/dev/ttyACM0', baudrate=57600, timeout=1):
+def sin_curve_in_position_with_vel_control(amplitude, frequency, time_to_wiggle_for=5, maxvel=5000, acceptable_error=2, gain_proportional=1, gain_integral=.001, port='/dev/ttyACM0', baudrate=19200, timeout=1):
     '''
     This does not reall work well.
     '''
@@ -40,7 +40,7 @@ def sin_curve_in_position_with_vel_control(amplitude, frequency, time_to_wiggle_
     ax.set_ylabel('value')
     
     
-def sin_curve_in_position_with_pos_control(amplitude, frequency, time_to_wiggle_for=5, maxvel=5000, port='/dev/ttyACM0', baudrate=57600, timeout=1):
+def sin_curve_in_position_with_pos_control(amplitude, frequency, time_to_wiggle_for=5, maxvel=5000, port='/dev/ttyACM0', baudrate=19200, timeout=1):
     '''
     
     '''
@@ -80,4 +80,4 @@ def sin_curve_in_position_with_pos_control(amplitude, frequency, time_to_wiggle_
 if __name__ == '__main__':
     amplitude = 1000 # in steps
     frequency = 1 # in steps per second
-    sin_curve_in_position_with_vel_control(amplitude, frequency, time_to_wiggle_for=10, port='/dev/ttyACM1', baudrate=57600, timeout=1)
+    sin_curve_in_position_with_vel_control(amplitude, frequency, time_to_wiggle_for=10, port='/dev/ttyACM1', baudrate=19200, timeout=1)

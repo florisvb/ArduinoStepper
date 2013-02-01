@@ -8,7 +8,7 @@ if __name__ == '__main__':
 
     # set up variables for serial communication
     port = '/dev/ttyACM0'
-    baudrate = 57600
+    baudrate = 19200
     timeout = 1
     
     # instantiate stepper class

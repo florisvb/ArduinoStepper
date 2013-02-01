@@ -3,7 +3,7 @@ import time
 import numpy as np
 import arduino_stepper.arduino_stepper as arduino_stepper
 
-def test_pwm_frequency(f, port='/dev/ttyACM0', baudrate=57600, timeout=1):
+def test_pwm_frequency(f, port='/dev/ttyACM0', baudrate=19200, timeout=1):
     astep = Arduino_Stepper(port=port,timeout=timeout, baudrate=baudrate)
     astep.set_vel(0)
     astep.reset_step_counter()
@@ -19,4 +19,4 @@ def test_pwm_frequency(f, port='/dev/ttyACM0', baudrate=57600, timeout=1):
     
 if __name__ == '__main__':
     frequency = 100 # in steps per second
-    test_pwm_frequency(frequency, port='/dev/ttyACM0', baudrate=57600, timeout=1)
+    test_pwm_frequency(frequency, port='/dev/ttyACM0', baudrate=19200, timeout=1)
