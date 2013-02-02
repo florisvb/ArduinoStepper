@@ -13,3 +13,5 @@ Examples:
 
 see the folder python/examples.
 
+
+http://playground.arduino.cc/Linux/Udev
