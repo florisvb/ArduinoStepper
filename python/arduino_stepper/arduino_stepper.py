@@ -1,9 +1,11 @@
 import serial
 import time
 import numpy as np
+import atexit
 
 class Arduino_Stepper(serial.Serial):
     def __init__ (self, arduino_board='uno', clock_pin=3, **kwargs):
+        atexit.register(self.exit)
         super(Arduino_Stepper,self).__init__(**kwargs)
         time.sleep(2)
         #self.readlines() # clear out buffer
@@ -17,8 +19,19 @@ class Arduino_Stepper(serial.Serial):
         self.pwm_speed = 0
         self.frequency = 0
         self.position = 0
-        
         self.mode = 'velocity'
+        
+        self.is_connected = self.connect()
+        
+    def exit(self):
+        print 'Exiting -- disconnecting from Arduino'
+        print 'data left unread: '
+        print self.readlines()
+        print 'setting velocity to zero'
+        self.set_vel(0)
+        print 'closing serial connection'
+        self.close()
+        
         
     def _set_pwm_speed(self, pwm_speed):
         self.write('[%s,%s]\n'%(1,pwm_speed))
@@ -34,6 +47,19 @@ class Arduino_Stepper(serial.Serial):
         if self.mode != 'velocity':
             self.write('[%s,%s]\n'%(102,0))
             self.mode = 'velocity'
+            
+    def connect(self, attempts=5, timeout=0.2):
+        is_connected = False
+        attempt = 0
+        while not is_connected and attempt<attempts:
+            attempt += 1
+            pos = self.get_pos(timeout)
+            if pos is not None:
+                return True
+            else:
+                continue
+        return False
+                
             
     def set_vel(self, frequency):
         '''
@@ -61,6 +87,11 @@ class Arduino_Stepper(serial.Serial):
         
     def enable_interrupts(self):
         self.write('[%s,%s]\n'%(4,0))
+        while 1:
+            data = self.readline().strip()
+            if data is not None and len(data) > 0:
+                if int(data) == 1:
+                    return
         
     def disable_interrupts(self, steps=10):
         # disables all interrupts (set via set_interrupt_pins) for X number of steps
@@ -68,9 +99,21 @@ class Arduino_Stepper(serial.Serial):
         
     def set_interrupt_pins(self, pin0=0, pin1=1):
         # corresponds to analog input pins
+        print 'setting ', pin0
         self.write('[%s,%s]\n'%(6,pin0))
+        while 1:
+            data = self.readline().strip()
+            if data is not None and len(data) > 0:
+                if int(data) == 1:
+                    break
         self.write('[%s,%s]\n'%(7,pin1))
-        
+        print 'setting ', pin1
+        while 1:
+            data = self.readline().strip()
+            if data is not None and len(data) > 0:
+                if int(data) == 1:
+                    return
+                    
     def get_interrupt_states(self):
         self.write('[%s,%s]\n'%(3,0))
         while 1:
@@ -92,8 +135,7 @@ class Arduino_Stepper(serial.Serial):
                 self.position = pos
                 return pos
         else:
-            self.position = 0
-            return 0
+            return None
             
     def go_to_pos_vel_control(self, desired_position, maxvel=500, acceptable_error=1, gain_proportional=1, gain_integral=0.001, integral_memory=20):
         '''

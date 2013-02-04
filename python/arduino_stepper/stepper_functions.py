@@ -1,6 +1,6 @@
 import time
 import numpy as np
-import arduino_stepper.arduino_stepper as arduino_stepper
+import arduino_stepper
 
 def bounce_between_two_limit_switches(sign=-1, ncycles=2, vel=1000, port='/dev/ttyACM1', baudrate=19200, timeout=1, astep=None):
     '''
@@ -12,15 +12,32 @@ def bounce_between_two_limit_switches(sign=-1, ncycles=2, vel=1000, port='/dev/t
     astep -- instance of Arduino_Stepper class, if None the function will create it's own instance using the given port and baudrate 
 
     '''
-    if astep is None:
-        astep = arduino_stepper.Arduino_Stepper(port=port,timeout=timeout, baudrate=baudrate)
     
+    if astep is None:
+        
+        print 'connecting to stepper'    
+        is_connected = False
+        n = 0
+        while not is_connected:
+            n += 1
+            print 'nth try: ', n
+            astep = arduino_stepper.Arduino_Stepper(port=port,timeout=timeout, baudrate=baudrate)
+            is_connected = astep.is_connected            
+
+    print 'stepper connected'
+        
+    print astep.get_pos()
+        
+    print 'setting interrupt pins'
     astep.set_interrupt_pins(0,1)
+    print 'enabling interrupts'
     astep.enable_interrupts()
     
     cycles = 0
     prev_interrupt = None
     
+    print 'starting cycles'
+    started = False
     while cycles < ncycles:
         interrupt_0, interrupt_1 = astep.get_interrupt_states()
         if interrupt_0 == 1:
@@ -35,8 +52,10 @@ def bounce_between_two_limit_switches(sign=-1, ncycles=2, vel=1000, port='/dev/t
             if prev_interrupt == 0:
                 cycles += 1
             prev_interrupt = 1
-        elif astep.frequency == 0:
+        elif not started:
             astep.set_vel(vel)
+        started = True
     astep.set_vel(0)
+    #astep.close()
     
     return 
