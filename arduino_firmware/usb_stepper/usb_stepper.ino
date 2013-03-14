@@ -12,8 +12,8 @@ SerialReceiver receiver;
 // for UNO: 3, 5, 6, 9, 10, and 11. (the pins with the ~ next to them) 
 // Provide 8-bit PWM output with the analogWrite() function
 int clock_pin = 3;
-int clock_interrupt = 1; // for Uno this interrupt corresponds to pin 3, and allows us to keep track of position
-int dir_pin = 4;
+int clock_interrupt = 1; // for Uno interrupt 1 corresponds to pin 3, and allows us to keep track of position
+int dir_pin = 8;
 
 // Variables, yes some of these could be ints instead of longs.
 int absval;
@@ -23,10 +23,10 @@ bool interrupt_override = 1;
 bool software_transmission = 0;
 int interrupt_override_stepcounter = 0;
 int interrupt_override_steptrigger = 0;
-int dir = 0;
+volatile int dir = 0;
 int action;
 int value;
-int pulse_counter = 0;
+volatile int pulse_counter = 0;
 int interrupt_pin_0 = 0;
 int interrupt_pin_1 = 1;
 int increment_steps_delay = 5;
@@ -176,7 +176,7 @@ void incrementSteps(int value, int send_reply) {
     incrementStep(dir);
   }
   if (send_reply==1) {
-    if ((interrupt_0==0) && (interrupt_1==0)) {
+    if ((interrupt_0==0) && (interrupt_1==0) || (interrupt_override==1)) {
       Serial << pulse_counter << endl;
     }
   }
