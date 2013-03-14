@@ -13,7 +13,7 @@ SerialReceiver receiver;
 // Provide 8-bit PWM output with the analogWrite() function
 int clock_pin = 3;
 int clock_interrupt = 1; // for Uno this interrupt corresponds to pin 3, and allows us to keep track of position
-int dir_pin = 8;
+int dir_pin = 4;
 
 // Variables, yes some of these could be ints instead of longs.
 int absval;
